@@ -72,6 +72,61 @@ export async function createGuestUser() {
   }
 }
 
+export async function findOrCreatePuterUser({
+  email,
+  image,
+  name,
+  puterToken,
+}: {
+  email: string;
+  image?: string | null;
+  name: string;
+  puterToken: string;
+}) {
+  try {
+    const [existing] = await db
+      .select()
+      .from(user)
+      .where(eq(user.email, email));
+
+    if (existing) {
+      const [updated] = await db
+        .update(user)
+        .set({
+          image: image ?? existing.image,
+          name,
+          puterToken,
+          updatedAt: new Date(),
+        })
+        .where(eq(user.id, existing.id))
+        .returning();
+      return updated;
+    }
+
+    const [created] = await db
+      .insert(user)
+      .values({ email, image: image ?? null, name, puterToken })
+      .returning();
+    return created;
+  } catch (error) {
+    throw new ChatbotError("bad_request:database", { cause: error });
+  }
+}
+
+export async function getPuterTokenByUserId(
+  id: string
+): Promise<string | null> {
+  try {
+    const [row] = await db
+      .select({ puterToken: user.puterToken })
+      .from(user)
+      .where(eq(user.id, id));
+    return row?.puterToken ?? null;
+  } catch {
+    return null;
+  }
+}
+
 export async function saveChat({
   id,
   userId,

@@ -6,6 +6,7 @@ import { useSession } from "next-auth/react";
 import { useActionState, useEffect, useState } from "react";
 
 import { AuthForm } from "@/components/chat/auth-form";
+import { PuterSignInButton } from "@/components/chat/puter-sign-in";
 import { SubmitButton } from "@/components/chat/submit-button";
 import { toast } from "@/components/chat/toast";
 import { type LoginActionState, login } from "../actions";
@@ -49,6 +50,14 @@ export default function Page() {
       <p className="text-sm text-muted-foreground">
         Sign in to your account to continue
       </p>
+      <PuterSignInButton />
+      <div className="relative py-1 text-center text-xs text-muted-foreground">
+        <span className="relative z-10 bg-background px-2">or</span>
+        <span
+          aria-hidden
+          className="absolute top-1/2 right-0 left-0 h-px bg-border"
+        />
+      </div>
       <AuthForm action={handleSubmit} defaultEmail={email}>
         <SubmitButton isSuccessful={isSuccessful}>Sign in</SubmitButton>
         <p className="text-center text-[13px] text-muted-foreground">

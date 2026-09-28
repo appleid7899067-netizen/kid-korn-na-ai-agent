@@ -1,9 +1,9 @@
 export const titleModel = {
   description: "Fast model for title generation",
   gatewayOrder: [],
-  id: "openai/gpt-4o-mini",
+  id: "puter/gpt-4o-mini",
   name: "GPT-4o mini",
-  provider: "openai",
+  provider: "puter",
 };
 
 export type ModelCapabilities = {
@@ -21,7 +21,57 @@ export type ChatModel = {
   reasoningEffort?: "none" | "minimal" | "low" | "medium" | "high";
 };
 
-const defaultChatModels: ChatModel[] = [
+/**
+ * True when the app can serve AI through Puter (https://puter.com) — either
+ * with the site's PUTER_AUTH_TOKEN or with the signed-in user's own token
+ * (Puter's User-Pays model).
+ */
+export const isPuterConfigured = Boolean(
+  process.env.PUTER_AUTH_TOKEN ||
+    process.env.AI_PROVIDER_CONFIG_JSON?.includes('"puter"')
+);
+
+const puterChatModels: ChatModel[] = [
+  {
+    description: "โมเดลเร็วสำหรับแชต งานเขียน และการใช้เครื่องมือ",
+    id: "puter/gpt-5.4-nano",
+    name: "GPT-5.4 nano",
+    provider: "puter",
+  },
+  {
+    description: "สมดุลระหว่างความเร็ว ราคา และคุณภาพ",
+    id: "puter/gpt-4o-mini",
+    name: "GPT-4o mini",
+    provider: "puter",
+  },
+  {
+    description: "โมเดลอเนกประสงค์ รองรับภาพและเครื่องมือ",
+    id: "puter/gpt-4o",
+    name: "GPT-4o",
+    provider: "puter",
+  },
+  {
+    description: "โมเดลให้เหตุผลสำหรับงานยาก",
+    id: "puter/o4-mini",
+    name: "o4-mini",
+    provider: "puter",
+    reasoningEffort: "medium",
+  },
+  {
+    description: "Claude Sonnet จาก Anthropic",
+    id: "puter/claude-sonnet-5",
+    name: "Claude Sonnet 5",
+    provider: "puter",
+  },
+  {
+    description: "โมเดลเร็วจาก Google Gemini",
+    id: "puter/gemini-3.5-flash-lite",
+    name: "Gemini 3.5 Flash Lite",
+    provider: "puter",
+  },
+];
+
+const legacyChatModels: ChatModel[] = [
   {
     description: "โมเดลเร็วสำหรับแชต งานเขียน และการใช้เครื่องมือ",
     id: "openai/gpt-4o-mini",
@@ -29,6 +79,10 @@ const defaultChatModels: ChatModel[] = [
     provider: "openai",
   },
 ];
+
+const defaultChatModels: ChatModel[] = isPuterConfigured
+  ? puterChatModels
+  : legacyChatModels;
 
 function getConfiguredModels(): ChatModel[] {
   const raw = process.env.AI_MODELS_JSON;
@@ -60,11 +114,28 @@ function getConfiguredModels(): ChatModel[] {
 
 export const chatModels: ChatModel[] = getConfiguredModels();
 
+/**
+ * Static capability guess for Puter models. Puter routes to 500+ vendor
+ * models, so instead of querying the Vercel AI Gateway we infer from the id.
+ */
+function getPuterCapabilities(modelId: string): ModelCapabilities {
+  const name = modelId.split("/").slice(1).join("/") || modelId;
+  return {
+    reasoning: /^o\d/.test(name) || /reasoning/.test(name),
+    tools: true,
+    vision: /gpt-4o|gpt-5|gpt-6|claude|gemini/.test(name),
+  };
+}
+
 export async function getCapabilities(): Promise<
   Record<string, ModelCapabilities>
 > {
   const results = await Promise.all(
     chatModels.map(async (model) => {
+      if (model.id.startsWith("puter/")) {
+        return [model.id, getPuterCapabilities(model.id)];
+      }
+
       try {
         const res = await fetch(
           `https://ai-gateway.vercel.sh/v1/models/${model.id}/endpoints`,
@@ -106,6 +177,9 @@ export async function getCapabilities(): Promise<
 export const isDemo = process.env.IS_DEMO === "1";
 
 export const DEFAULT_CHAT_MODEL = chatModels[0]?.id ?? "openai/gpt-4o-mini";
+
+/** Fallback title model: first configured model when AI_TITLE_MODEL is unset. */
+export const DEFAULT_TITLE_MODEL = chatModels[0]?.id ?? "puter/gpt-4o-mini";
 
 type GatewayModel = {
   id: string;

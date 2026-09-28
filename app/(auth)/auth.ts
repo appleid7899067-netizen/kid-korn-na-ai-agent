@@ -3,7 +3,12 @@ import NextAuth, { type DefaultSession } from "next-auth";
 import type { DefaultJWT } from "next-auth/jwt";
 import Credentials from "next-auth/providers/credentials";
 import { DUMMY_PASSWORD } from "@/lib/constants";
-import { createGuestUser, getUser } from "@/lib/db/queries";
+import {
+  createGuestUser,
+  findOrCreatePuterUser,
+  getUser,
+} from "@/lib/db/queries";
+import { puterEmailFor, verifyPuterToken } from "@/lib/puter/server";
 import { authConfig } from "./auth.config";
 
 export type UserType = "guest" | "regular";
@@ -94,6 +99,40 @@ export const {
       },
       credentials: {},
       id: "guest",
+    }),
+    Credentials({
+      async authorize(credentials) {
+        const token = String(credentials.token ?? "");
+        const claimedUsername = String(credentials.username ?? "");
+
+        if (!token) {
+          return null;
+        }
+
+        // Verify the token against Puter before trusting the identity.
+        const identity = await verifyPuterToken(token);
+        if (!identity?.username) {
+          return null;
+        }
+
+        if (claimedUsername && claimedUsername !== identity.username) {
+          return null;
+        }
+
+        const puterUser = await findOrCreatePuterUser({
+          email: puterEmailFor(identity.username),
+          image: identity.image,
+          name: identity.username,
+          puterToken: token,
+        });
+
+        return { ...puterUser, type: "regular" };
+      },
+      credentials: {
+        token: { label: "Puter token", type: "text" },
+        username: { label: "Puter username", type: "text" },
+      },
+      id: "puter",
     }),
   ],
 });
