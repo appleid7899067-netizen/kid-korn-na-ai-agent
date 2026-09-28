@@ -34,6 +34,7 @@ import {
   getChatById,
   getMessageCountByUserId,
   getMessagesByChatId,
+  getPuterTokenByUserId,
   saveChat,
   saveMessages,
   updateChatTitleById,
@@ -64,8 +65,6 @@ function getStreamContext() {
     return null;
   }
 }
-
-export { getStreamContext };
 
 export async function POST(request: Request) {
   let requestBody: PostRequestBody;
@@ -101,6 +100,7 @@ export async function POST(request: Request) {
     await checkIpRateLimit(ipAddress(request));
 
     const userType: UserType = session.user.type;
+    const puterToken = await getPuterTokenByUserId(session.user.id);
 
     const messageCount = await getMessageCountByUserId({
       differenceInHours: 1,
@@ -129,7 +129,7 @@ export async function POST(request: Request) {
         userId: session.user.id,
         visibility: selectedVisibilityType,
       });
-      titlePromise = generateTitleFromUserMessage({ message });
+      titlePromise = generateTitleFromUserMessage({ message, puterToken });
     }
 
     let uiMessages: ChatMessage[];
@@ -279,7 +279,7 @@ export async function POST(request: Request) {
                 ],
           instructions: systemPrompt({ requestHints, supportsTools }),
           messages: modelMessages,
-          model: getLanguageModel(chatModel),
+          model: getLanguageModel(chatModel, { puterToken }),
           onAbort() {
             stopWaitingStatus();
           },

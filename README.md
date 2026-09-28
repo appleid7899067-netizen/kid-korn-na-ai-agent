@@ -52,7 +52,36 @@ This template uses the [Vercel AI Gateway](https://vercel.com/docs/ai-gateway) t
 
 With the [AI SDK](https://ai-sdk.dev/docs/introduction), you can also switch to direct LLM providers like [OpenAI](https://openai.com), [Anthropic](https://anthropic.com), [Cohere](https://cohere.com/), and [many more](https://ai-sdk.dev/providers/ai-sdk-providers) with just a few lines of code.
 
+## Puter — ล็อกอินและโมเดล AI ในที่เดียว (แนะนำ)
+
+[Puter](https://puter.com) ให้ทั้ง **ระบบล็อกอิน** และ **โมเดล AI กว่า 500 ตัว** (GPT, Claude, Gemini, Grok ฯลฯ) ผ่าน OpenAI-compatible endpoint เดียว — ไม่ต้องสมัคร API key หลายเจ้า โดยผู้ใช้แต่ละคนจะออกค่า AI ของตัวเองตาม [User-Pays model](https://docs.puter.com/user-pays-model/)
+
+ตั้งค่า 2 ขั้นตอน:
+
+1. **โมเดล (ฝั่งเซิร์ฟเวอร์)** — สร้าง API token ที่ [puter.com/dashboard](https://puter.com/dashboard) (ปุ่ม "Create token") แล้วตั้ง environment variable:
+   ```env
+   PUTER_AUTH_TOKEN=your-puter-token
+   ```
+   เมื่อตั้งค่านี้ รายการโมเดลจะสลับเป็นโมเดลของ Puter (`puter/gpt-5.4-nano`, `puter/gpt-4o`, `puter/claude-sonnet-5` ฯลฯ) โดยอัตโนมัติ และผู้ใช้ที่ล็อกอินด้วย Puter จะใช้ token ของตัวเองก่อน (ระบบจะใช้ `PUTER_AUTH_TOKEN` เป็นค่าสำรองสำหรับ guest)
+2. **ล็อกอิน (ฝั่ง browser)** — ปุ่ม **"Continue with Puter"** บนหน้า `/login` เปิด Puter sign-in popup ระบบจะตรวจสอบ token กับ `api.puter.com/whoami` ก่อนสร้าง session (บันทึก Puter token ไว้ในฐานข้อมูลเพื่อใช้เรียกโมเดลในชื่อผู้ใช้นั้น ๆ)
+
+ปรับแต่งรายการโมเดลได้ด้วย `AI_MODELS_JSON` (รูปแบบ `puter/ชื่อโมเดล`) และ `AI_TITLE_MODEL` — ดูรายชื่อโมเดลทั้งหมดที่ [developer.puter.com/ai/models](https://developer.puter.com/ai/models/)
+
+With [Puter](https://puter.com) you get **sign-in** and **500+ AI models** (GPT, Claude, Gemini, Grok, ...) through a single OpenAI-compatible endpoint. Set `PUTER_AUTH_TOKEN` (from [puter.com/dashboard](https://puter.com/dashboard)) and the model catalog switches to Puter models automatically. The **"Continue with Puter"** button on `/login` signs users in via the Puter popup; each signed-in user's own token is used for AI calls first (Puter's User-Pays model), with `PUTER_AUTH_TOKEN` as the fallback.
+
 ## Deploy Your Own
+
+### Render (แนะนำ)
+
+โปรเจกต์มี [render.yaml](render.yaml) พร้อมใช้งาน — Render จะสร้าง Postgres database + web service ให้อัตโนมัติ และรัน migrations ตอน build:
+
+1. Push repo ขึ้น GitHub แล้วเปิด [Render Dashboard](https://dashboard.render.com) → **New +** → **Blueprint** → เลือก repo นี้ (ระบบจะอ่าน `render.yaml` ให้เอง)
+2. ตั้งค่า `PUTER_AUTH_TOKEN` ในหน้า environment ของ service (ค่าอื่นอย่าง `AUTH_SECRET` และ `POSTGRES_URL` Render ตั้งให้อัตโนมัติ)
+3. กด **Apply** — เสร็จแล้วจะได้ URL แบบ `https://kid-korn-ai-agent.onrender.com` (health check ที่ `/ping`)
+
+> หมายเหตุ: แผนฟรีของ Render จะ sleep เมื่อไม่มีคนเข้าใช้ (ตื่นเองเมื่อมี request) และ Postgres ฟรีมีอายุทดลอง 90 วัน — สำหรับงานจริงแนะนำแผน Starter
+
+### Vercel
 
 You can deploy your own version of Chatbot to Vercel with one click:
 
